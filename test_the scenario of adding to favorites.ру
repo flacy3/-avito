@@ -1,0 +1,19 @@
+ public void testAddToFavorites() {
+        // Сценарий добавления в избранное
+        driver.get("https://www.avito.ru/moskva/telefony/iphone_14_pro_256gb_1032107410");
+        
+        WebElement favoriteButton = wait.until(
+            ExpectedConditions.elementToBeClickable(
+                By.cssSelector("[data-marker='item-view/favorite-button']")
+            )
+        );
+        String initialClass = favoriteButton.getAttribute("class");
+        favoriteButton.click();
+        
+        // Проверка изменения состояния кнопки
+        wait.until(ExpectedConditions.not(
+            ExpectedConditions.attributeContains(favoriteButton, "class", initialClass)
+        ));
+        assertTrue("Товар должен быть добавлен в избранное",
+            favoriteButton.getAttribute("class").contains("added"));
+    }
