@@ -1,0 +1,50 @@
+ public void testSearchAndFilterProducts() {
+        // 1. Поиск товара
+        WebElement searchInput = wait.until(
+            ExpectedConditions.visibilityOfElementLocated(
+                By.cssSelector("input[data-marker='search-form/suggest']")
+            )
+        );
+        searchInput.sendKeys("iPhone 14");
+        searchInput.sendKeys(Keys.ENTER);
+        
+        // 2. Проверка заголовка страницы результатов
+        wait.until(ExpectedConditions.titleContains("iPhone 14"));
+        assertTrue(driver.getTitle().contains("iPhone 14"));
+        
+        // 3. Применение фильтра "Новые"
+        WebElement newFilter = wait.until(
+            ExpectedConditions.elementToBeClickable(
+                By.xpath("//button[contains(text(),'Новые')]")
+            )
+        );
+        newFilter.click();
+        
+        // 4. Проверка, что появились результаты
+        List<WebElement> products = wait.until(
+            ExpectedConditions.presenceOfAllElementsLocatedBy(
+                By.cssSelector("[data-marker='catalog-serp'] [data-marker='item']")
+            )
+        );
+        assertTrue("Должны быть найдены товары", products.size() > 0);
+        
+        // 5. Проверка цены первого товара
+        WebElement firstProductPrice = products.get(0)
+            .findElement(By.cssSelector("[data-marker='item-price']"));
+        String priceText = firstProductPrice.getText();
+        assertNotNull("Цена должна отображаться", priceText);
+        assertTrue("Цена должна содержать ₽", priceText.contains("₽"));
+        
+        // 6. Открытие детальной страницы товара
+        products.get(0).click();
+        
+        // 7. Проверка деталей товара
+        wait.until(ExpectedConditions.visibilityOfElementLocated(
+            By.cssSelector("[data-marker='item-view/title-info']")
+        ));
+        WebElement productTitle = driver.findElement(
+            By.cssSelector("[data-marker='item-view/title-info']")
+        );
+        assertTrue("Название должно содержать iPhone", 
+            productTitle.getText().toLowerCase().contains("iphone"));
+    }
