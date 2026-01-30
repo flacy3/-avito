@@ -1,0 +1,28 @@
+public void testPriceFilter() {
+        driver.get("https://www.avito.ru/moskva/telefony");
+        
+        // Установка диапазона цен
+        WebElement minPrice = driver.findElement(
+            By.cssSelector("input[data-marker='price/from']")
+        );
+        minPrice.sendKeys("50000");
+        
+        WebElement maxPrice = driver.findElement(
+            By.cssSelector("input[data-marker='price/to']")
+        );
+        maxPrice.sendKeys("100000");
+        maxPrice.sendKeys(Keys.ENTER);
+        
+        // Проверка результатов
+        List<WebElement> prices = driver.findElements(
+            By.cssSelector("[data-marker='item-price']")
+        );
+        
+        for (WebElement priceElement : prices) {
+            String priceText = priceElement.getText()
+                .replaceAll("[^\\d]", "");
+            int price = Integer.parseInt(priceText);
+            assertTrue("Цена должна быть в диапазоне 50000-100000", 
+                price >= 50000 && price <= 100000);
+        }
+    }
