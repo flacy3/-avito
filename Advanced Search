@@ -1,0 +1,88 @@
+package ru.avito.pages;
+
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.PageFactory;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import java.time.Duration;
+
+/**
+ * Page Object для расширенного поиска Avito
+ */
+public class AdvancedSearchPage {
+    private final WebDriver driver;
+    private final WebDriverWait wait;
+    
+    @FindBy(css = "[data-marker='search-form/query']")
+    private WebElement searchQuery;
+    
+    @FindBy(css = "[data-marker='search-form/category']")
+    private WebElement categorySelect;
+    
+    @FindBy(css = "[data-marker='search-form/region']")
+    private WebElement regionSelect;
+    
+    @FindBy(css = "[data-marker='search-form/price/from']")
+    private WebElement priceFrom;
+    
+    @FindBy(css = "[data-marker='search-form/price/to']")
+    private WebElement priceTo;
+    
+    @FindBy(css = "[data-marker='search-form/only-photo']")
+    private WebElement onlyWithPhotos;
+    
+    @FindBy(css = "[data-marker='search-form/submit-button']")
+    private WebElement searchButton;
+    
+    public AdvancedSearchPage(WebDriver driver) {
+        this.driver = driver;
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(15));
+        PageFactory.initElements(driver, this);
+    }
+    
+    /**
+     * Выполнить расширенный поиск
+     */
+    public SearchPage performAdvancedSearch(String query, String category, 
+                                           String region, int minPrice, int maxPrice, 
+                                           boolean photosOnly) {
+        // Заполняем поле поиска
+        if (query != null && !query.isEmpty()) {
+            searchQuery.clear();
+            searchQuery.sendKeys(query);
+        }
+        
+        // Выбираем категорию
+        if (category != null && !category.isEmpty()) {
+            // Реализация выбора категории
+        }
+        
+        // Выбираем регион
+        if (region != null && !region.isEmpty()) {
+            // Реализация выбора региона
+        }
+        
+        // Устанавливаем цену
+        if (minPrice > 0) {
+            priceFrom.clear();
+            priceFrom.sendKeys(String.valueOf(minPrice));
+        }
+        
+        if (maxPrice > 0) {
+            priceTo.clear();
+            priceTo.sendKeys(String.valueOf(maxPrice));
+        }
+        
+        // Только с фото
+        if (photosOnly && !onlyWithPhotos.isSelected()) {
+            onlyWithPhotos.click();
+        }
+        
+        // Нажимаем поиск
+        searchButton.click();
+        
+        return new SearchPage(driver);
+    }
+}
