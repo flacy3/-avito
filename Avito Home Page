@@ -1,0 +1,129 @@
+package ru.avito.pages;
+
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.PageFactory;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import java.time.Duration;
+import java.util.List;
+
+/**
+ * Page Object для главной страницы Avito
+ */
+public class MainPage {
+    private final WebDriver driver;
+    private final WebDriverWait wait;
+    
+    // Поисковая строка
+    @FindBy(css = "[data-marker='search-form/suggest']")
+    private WebElement searchInput;
+    
+    // Кнопка поиска
+    @FindBy(css = "[data-marker='search-form/submit-button']")
+    private WebElement searchButton;
+    
+    // Категории товаров
+    @FindBy(css = "[data-marker='search-form/category']")
+    private WebElement categoryDropdown;
+    
+    @FindBy(css = "[data-marker='popup/category/item']")
+    private List<WebElement> categoryItems;
+    
+    // Регион
+    @FindBy(css = "[data-marker='search-form/region']")
+    private WebElement regionButton;
+    
+    @FindBy(css = "[data-marker='popup-location/region/input']")
+    private WebElement regionInput;
+    
+    @FindBy(css = "[data-marker='suggest(0)']")
+    private WebElement firstRegionSuggestion;
+    
+    @FindBy(css = "[data-marker='popup-location/save-button']")
+    private WebElement saveRegionButton;
+    
+    // Расширенный поиск
+    @FindBy(css = "[data-marker='search-form/advanced-search']")
+    private WebElement advancedSearchButton;
+    
+    public MainPage(WebDriver driver) {
+        this.driver = driver;
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(15));
+        PageFactory.initElements(driver, this);
+    }
+    
+    /**
+     * Простой поиск товара
+     */
+    public SearchPage search(String query) {
+        wait.until(ExpectedConditions.visibilityOf(searchInput));
+        searchInput.clear();
+        searchInput.sendKeys(query);
+        searchButton.click();
+        return new SearchPage(driver);
+    }
+    
+    /**
+     * Поиск с выбором категории
+     */
+    public SearchPage searchWithCategory(String query, String category) {
+        selectCategory(category);
+        return search(query);
+    }
+    
+    /**
+     * Поиск с выбором региона
+     */
+    public SearchPage searchWithRegion(String query, String region) {
+        changeRegion(region);
+        return search(query);
+    }
+    
+    /**
+     * Выбор категории товара
+     */
+    public void selectCategory(String categoryName) {
+        wait.until(ExpectedConditions.elementToBeClickable(categoryDropdown));
+        categoryDropdown.click();
+        
+        wait.until(ExpectedConditions.visibilityOfAllElements(categoryItems));
+        
+        categoryItems.stream()
+            .filter(item -> item.getText().contains(categoryName))
+            .findFirst()
+            .ifPresent(WebElement::click);
+    }
+    
+    /**
+     * Изменение региона
+     */
+    public void changeRegion(String region) {
+        wait.until(ExpectedConditions.elementToBeClickable(regionButton));
+        regionButton.click();
+        
+        wait.until(ExpectedConditions.visibilityOf(regionInput));
+        regionInput.clear();
+        regionInput.sendKeys(region);
+        
+        wait.until(ExpectedConditions.elementToBeClickable(firstRegionSuggestion));
+        firstRegionSuggestion.click();
+        
+        wait.until(ExpectedConditions.elementToBeClickable(saveRegionButton));
+        saveRegionButton.click();
+        
+        // Ждем обновления региона
+        wait.until(ExpectedConditions.textToBePresentInElement(
+            regionButton, region.split(",")[0].trim()
+        ));
+    }
+    
+    /**
+     * Открыть расширенный поиск
+     */
+    public AdvancedSearchPage openAdvancedSearch() {
+        advancedSearchButton.click();
+        return new AdvancedSearchPage(driver);
+    }
+}
