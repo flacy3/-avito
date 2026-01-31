@@ -1,0 +1,317 @@
+package ru.avito.pages;
+
+import org.openqa.selenium.*;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.PageFactory;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import ru.avito.models.SearchResult;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Page Object для страницы результатов поиска Avito
+ */
+public class SearchPage {
+    private final WebDriver driver;
+    private final WebDriverWait wait;
+    
+    // Фильтры
+    @FindBy(css = "[data-marker='search-form/price/from']")
+    private WebElement priceFrom;
+    
+    @FindBy(css = "[data-marker='search-form/price/to']")
+    private WebElement priceTo;
+    
+    @FindBy(css = "[data-marker='search-form/sort']")
+    private WebElement sortDropdown;
+    
+    @FindBy(css = "[data-marker='delivery-filter']")
+    private WebElement deliveryFilter;
+    
+    @FindBy(css = "[data-marker='param-18953']")
+    private WebElement conditionNewFilter;
+    
+    @FindBy(css = "[data-marker='param-18954']")
+    private WebElement conditionUsedFilter;
+    
+    @FindBy(css = "[data-marker='search-filters/submit-button']")
+    private WebElement showResultsButton;
+    
+    // Результаты поиска
+    @FindBy(css = "[data-marker='catalog-serp'] [data-marker='item']")
+    private List<WebElement> searchResultItems;
+    
+    // Пагинация
+    @FindBy(css = "[data-marker='pagination-button/next']")
+    private WebElement nextPageButton;
+    
+    @FindBy(css = "[data-marker='page-current']")
+    private WebElement currentPage;
+    
+    // Найденные товары
+    @FindBy(css = "[data-marker='item/title']")
+    private List<WebElement> itemTitles;
+    
+    @FindBy(css = "[data-marker='item/price']")
+    private List<WebElement> itemPrices;
+    
+    @FindBy(css = "[data-marker='item/date']")
+    private List<WebElement> itemDates;
+    
+    @FindBy(css = "[data-marker='item/location']")
+    private List<WebElement> itemLocations;
+    
+    public SearchPage(WebDriver driver) {
+        this.driver = driver;
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(15));
+        PageFactory.initElements(driver, this);
+    }
+    
+    /**
+     * Установить фильтр цены
+     */
+    public SearchPage filterByPrice(int minPrice, int maxPrice) {
+        wait.until(ExpectedConditions.visibilityOf(priceFrom));
+        
+        priceFrom.clear();
+        if (minPrice > 0) {
+            priceFrom.sendKeys(String.valueOf(minPrice));
+        }
+        
+        priceTo.clear();
+        if (maxPrice > 0) {
+            priceTo.sendKeys(String.valueOf(maxPrice));
+        }
+        
+        applyFilters();
+        return this;
+    }
+    
+    /**
+     * Сортировать результаты
+     */
+    public SearchPage sortBy(String sortType) {
+        wait.until(ExpectedConditions.elementToBeClickable(sortDropdown));
+        Select select = new Select(sortDropdown);
+        
+        switch (sortType.toLowerCase()) {
+            case "cheap":
+                select.selectByValue("1");
+                break;
+            case "expensive":
+                select.selectByValue("2");
+                break;
+            case "new":
+                select.selectByValue("3");
+                break;
+            default:
+                select.selectByValue("104"); // по умолчанию: актуальные
+        }
+        
+        waitForResultsUpdate();
+        return this;
+    }
+    
+    /**
+     * Фильтровать по состоянию
+     */
+    public SearchPage filterByCondition(String condition) {
+        if ("new".equalsIgnoreCase(condition)) {
+            wait.until(ExpectedConditions.elementToBeClickable(conditionNewFilter));
+            conditionNewFilter.click();
+        } else if ("used".equalsIgnoreCase(condition)) {
+            wait.until(ExpectedConditions.elementToBeClickable(conditionUsedFilter));
+            conditionUsedFilter.click();
+        }
+        
+        applyFilters();
+        return this;
+    }
+    
+    /**
+     * Включить доставку
+     */
+    public SearchPage enableDelivery() {
+        try {
+            wait.until(ExpectedConditions.elementToBeClickable(deliveryFilter));
+            if (!deliveryFilter.isSelected()) {
+                deliveryFilter.click();
+                applyFilters();
+            }
+        } catch (Exception e) {
+            System.out.println("Фильтр доставки не найден");
+        }
+        return this;
+    }
+    
+    /**
+     * Получить количество результатов
+     */
+    public int getResultsCount() {
+        wait.until(ExpectedConditions.visibilityOfAllElements(searchResultItems));
+        return searchResultItems.size();
+    }
+    
+    /**
+     * Получить все результаты на текущей странице
+     */
+    public List<SearchResult> getAllResults() {
+        List<SearchResult> results = new ArrayList<>();
+        int itemsCount = Math.min(itemTitles.size(), itemPrices.size());
+        
+        for (int i = 0; i < itemsCount; i++) {
+            try {
+                SearchResult result = new SearchResult(
+                    itemTitles.get(i).getText(),
+                    parsePrice(itemPrices.get(i).getText()),
+                    i < itemLocations.size() ? itemLocations.get(i).getText() : "",
+                    i < itemDates.size() ? itemDates.get(i).getText() : "",
+                    searchResultItems.get(i).getAttribute("href")
+                );
+                results.add(result);
+            } catch (Exception e) {
+                System.out.println("Ошибка при обработке товара " + i + ": " + e.getMessage());
+            }
+        }
+        
+        return results;
+    }
+    
+    /**
+     * Получить результаты с ограничением по количеству
+     */
+    public List<SearchResult> getResults(int maxResults) {
+        List<SearchResult> allResults = new ArrayList<>();
+        List<SearchResult> currentPageResults;
+        int pagesToProcess = 1;
+        
+        for (int page = 1; page <= pagesToProcess && allResults.size() < maxResults; page++) {
+            if (page > 1) {
+                goToNextPage();
+                waitForResultsUpdate();
+            }
+            
+            currentPageResults = getAllResults();
+            allResults.addAll(currentPageResults);
+            
+            if (allResults.size() >= maxResults) {
+                allResults = allResults.subList(0, maxResults);
+                break;
+            }
+            
+            if (isNextPageAvailable()) {
+                pagesToProcess++;
+            }
+        }
+        
+        return allResults;
+    }
+    
+    /**
+     * Поиск конкретного товара
+     */
+    public SearchResult findSpecificItem(String itemNameContains) {
+        for (int i = 0; i < itemTitles.size(); i++) {
+            String title = itemTitles.get(i).getText().toLowerCase();
+            if (title.contains(itemNameContains.toLowerCase())) {
+                return new SearchResult(
+                    itemTitles.get(i).getText(),
+                    parsePrice(itemPrices.get(i).getText()),
+                    i < itemLocations.size() ? itemLocations.get(i).getText() : "",
+                    i < itemDates.size() ? itemDates.get(i).getText() : "",
+                    searchResultItems.get(i).getAttribute("href")
+                );
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Перейти на следующую страницу
+     */
+    public boolean goToNextPage() {
+        try {
+            if (isNextPageAvailable()) {
+                nextPageButton.click();
+                return true;
+            }
+        } catch (Exception e) {
+            System.out.println("Не удалось перейти на следующую страницу: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    /**
+     * Проверить доступность следующей страницы
+     */
+    public boolean isNextPageAvailable() {
+        try {
+            return nextPageButton.isDisplayed() && nextPageButton.isEnabled();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    /**
+     * Открыть детальную страницу товара
+     */
+    public ProductPage openProduct(int index) {
+        if (index >= 0 && index < searchResultItems.size()) {
+            searchResultItems.get(index).click();
+            return new ProductPage(driver);
+        }
+        throw new IllegalArgumentException("Неверный индекс товара: " + index);
+    }
+    
+    /**
+     * Получить текущий номер страницы
+     */
+    public int getCurrentPageNumber() {
+        try {
+            String pageText = currentPage.getText();
+            return Integer.parseInt(pageText.replaceAll("\\D+", ""));
+        } catch (Exception e) {
+            return 1;
+        }
+    }
+    
+    // Вспомогательные методы
+    private void applyFilters() {
+        try {
+            showResultsButton.click();
+            waitForResultsUpdate();
+        } catch (Exception e) {
+            // Иногда кнопка не нужна, фильтры применяются автоматически
+        }
+    }
+    
+    private void waitForResultsUpdate() {
+        try {
+            Thread.sleep(2000); // Краткая пауза для обновления
+            wait.until(driver -> {
+                try {
+                    return !searchResultItems.isEmpty() && 
+                           searchResultItems.get(0).isDisplayed();
+                } catch (StaleElementReferenceException e) {
+                    return false;
+                }
+            });
+        } catch (Exception e) {
+            // Игнорируем ошибки ожидания
+        }
+    }
+    
+    private int parsePrice(String priceText) {
+        try {
+            String cleanPrice = priceText
+                .replaceAll("[^\\d]", "")
+                .trim();
+            return Integer.parseInt(cleanPrice);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+}
