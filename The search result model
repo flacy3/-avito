@@ -1,0 +1,42 @@
+package ru.avito.models;
+
+/**
+ * Модель для хранения информации о найденном товаре
+ */
+public class SearchResult {
+    private String title;
+    private int price;
+    private String location;
+    private String date;
+    private String url;
+    
+    public SearchResult(String title, int price, String location, String date, String url) {
+        this.title = title;
+        this.price = price;
+        this.location = location;
+        this.date = date;
+        this.url = url;
+    }
+    
+    // Геттеры
+    public String getTitle() { return title; }
+    public int getPrice() { return price; }
+    public String getLocation() { return location; }
+    public String getDate() { return date; }
+    public String getUrl() { return url; }
+    
+    // Сеттеры
+    public void setTitle(String title) { this.title = title; }
+    public void setPrice(int price) { this.price = price; }
+    public void setLocation(String location) { this.location = location; }
+    public void setDate(String date) { this.date = date; }
+    public void setUrl(String url) { this.url = url; }
+    
+    @Override
+    public String toString() {
+        return String.format(
+            "Товар: %s\nЦена: %,d руб.\nМестоположение: %s\nДата: %s\nСсылка: %s",
+            title, price, location, date, url
+        );
+    }
+}
